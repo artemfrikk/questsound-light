@@ -8,7 +8,7 @@ import { connect, pair, newKey, newCode } from './lib/link.mjs';
 import { makeHub } from './lib/hub.mjs';
 import { MODULES } from './modules/index.mjs';
 
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 const args = process.argv.slice(2), arg = n => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`questsound-light ${VERSION}

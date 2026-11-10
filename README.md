@@ -8,14 +8,16 @@ A bridge between [QuestSound](https://questsound.ru) and your smart lights: the 
 
 ## Supported
 
-| Connection | Lamps | Effects |
+| Connection | Lamps | Lightning flashes |
 |---|---|---|
 | **Home Assistant** | anything in HA: Zigbee, Wi-Fi, Hue, IKEA… | yes |
 | **Yeelight** | Yeelight bulbs and strips over the local network | yes |
-| **Yandex** | lamps in Yandex Smart Home ("Дом с Алисой"), official API | no (cloud, ~1 s delay) |
+| **Yandex** | lamps in Yandex Smart Home ("Дом с Алисой"), official API | no (cloud, ~1 s delay; the bridge fades in steps) |
 | **MQTT** | Zigbee2MQTT and anything listening on MQTT | yes |
 | **WLED** | strips and lamps running WLED | yes |
 | **Web request** | Node-RED and anything that takes HTTP | no |
+
+Smooth fades and the calm "Breath" and "Fire" effects work on every connection.
 
 ## Install
 
@@ -48,7 +50,7 @@ See [SECURITY.md](SECURITY.md): the bridge talks only to questsound.ru and the a
 
 ## Writing a module
 
-A module is a file in `modules/` exporting `{ id, name, rate, settings, start(settings), discover(), set(id, target), stop() }`, where `target` is `{ color: '#rrggbb', bri: 0..1, fade: seconds }` or `'off'`. Cloud APIs with one shared limit may define `setMany({ id: target })` instead of `set`. Add it to `modules/index.mjs`.
+A module is a file in `modules/` exporting `{ id, name, rate, settings, start(settings), discover(), set(id, target), stop() }`, where `target` is `{ color: '#rrggbb', bri: 0..1, fade: seconds }` or `'off'`. Cloud APIs with one shared limit may define `setMany({ id: target })` instead of `set`. If the lamps can't fade, set `fade: false` and the bridge fades in steps. Add it to `modules/index.mjs`.
 
 ## License
 

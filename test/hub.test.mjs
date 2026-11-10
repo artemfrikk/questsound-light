@@ -164,3 +164,17 @@ test('credentials inside plain fields are masked in state and survive a re-save'
   await hub.handle({ cmd: 'config', module: 'fake', settings: { url: shown } }); // the form sends back what it showed
   assert.equal(saved.at(-1).modules.fake.url, url);
 });
+test('a looping effect keeps the lamp moving; a module without fades gets steps', async () => {
+  const { hub, mod } = setup(); await hub.start();
+  await hub.handle({ cmd: 'set', lamps: { 'fake:l1': { color: '#ffaa00', bri: 1, fade: 0, fx: 'breath' }, 'fake:l2': { color: '#ffaa00', bri: 1, fade: 0, fx: 'bogus' } } });
+  await sleep(1900);
+  const l1 = mod.calls.filter(c => c[1] === 'l1'), l2 = mod.calls.filter(c => c[1] === 'l2');
+  assert.ok(l1.length >= 2, 'breath steps: ' + l1.length);
+  assert.ok(l1.every(c => !('fx' in c[2])), 'the module never sees fx');
+  assert.equal(l2.length, 1); // an unknown effect is just a color
+  await hub.stop();
+});
+test('identify does not crash on unknown lamps', async () => {
+  const { hub } = setup(); await hub.start();
+  await hub.handle({ cmd: 'identify', lamp: 'fake:nope' });
+});

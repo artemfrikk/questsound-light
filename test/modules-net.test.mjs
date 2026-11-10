@@ -76,9 +76,11 @@ test('Yandex: lights, rgb and hsv lamps, one actions call', async t => {
     { id: 'd2', actions: [{ type: 'devices.capabilities.on_off', state: { instance: 'on', value: false } }] },
   ] });
   assert.ok(S.seen.every(r => r.headers.authorization === 'Bearer YT'));
-  await m.setMany({ d2: { color: '#00ff00', bri: 1, fade: 0 } });
-  const hsv = S.seen.filter(r => r.method === 'POST')[1].json.devices[0].actions[1];
-  assert.deepEqual(hsv, { type: 'devices.capabilities.color_setting', state: { instance: 'hsv', value: { h: 120, s: 100, v: 100 } } });
+  await m.setMany({ d2: { color: '#00ff00', bri: 0.4, fade: 0 } });
+  // an hsv lamp: brightness goes inside the color, no brightness command after it (it would turn the lamp white)
+  const acts = S.seen.filter(r => r.method === 'POST')[1].json.devices[0].actions;
+  assert.deepEqual(acts.slice(1), [{ type: 'devices.capabilities.color_setting', state: { instance: 'hsv', value: { h: 120, s: 100, v: 40 } } }]);
+  assert.equal(m.fade, false);
 });
 test('Yandex: 2 calls a second across all lamps', async () => {
   const calls = [];

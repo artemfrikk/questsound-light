@@ -7,7 +7,7 @@ const BASE = () => process.env.QSL_YANDEX_URL || 'https://api.iot.yandex.net';
 const CAP = 'devices.capabilities.';
 
 export default {
-  id: 'yandex', name: 'Яндекс', rate: 2,
+  id: 'yandex', name: 'Яндекс', rate: 2, fade: false, // no transitions in the API: the bridge fades in steps
   settings: [{ key: 'token', label: 'OAuth-токен Яндекса', secret: true }],
   call(path, body) {
     return request(BASE() + path, { method: body ? 'POST' : 'GET', body: body && JSON.stringify(body), headers: { Authorization: 'Bearer ' + this.token, 'Content-Type': 'application/json' }, timeout: 8000 });
@@ -30,9 +30,14 @@ export default {
       if (t === 'off' || t.bri <= 0) return { id, actions: [{ type: CAP + 'on_off', state: { instance: 'on', value: false } }] };
       const actions = [{ type: CAP + 'on_off', state: { instance: 'on', value: true } }], model = this.models?.get(id);
       const [r, g, b] = hexToRgb(t.color);
-      if (model === 'rgb') actions.push({ type: CAP + 'color_setting', state: { instance: 'rgb', value: (r << 16) + (g << 8) + b } });
-      else if (model === 'hsv') actions.push({ type: CAP + 'color_setting', state: { instance: 'hsv', value: rgbToHsv(r, g, b) } });
-      actions.push({ type: CAP + 'range', state: { instance: 'brightness', value: Math.max(1, Math.round(t.bri * 100)) } });
+      const pct = Math.max(1, Math.round(t.bri * 100));
+      // an hsv lamp (Tuya Wi-Fi lamps, strips) takes brightness inside the color: a separate brightness command
+      // after it puts many of them back to white, so for them v is the brightness and nothing follows
+      if (model === 'hsv') actions.push({ type: CAP + 'color_setting', state: { instance: 'hsv', value: { ...rgbToHsv(r, g, b), v: pct } } });
+      else {
+        if (model === 'rgb') actions.push({ type: CAP + 'color_setting', state: { instance: 'rgb', value: (r << 16) + (g << 8) + b } });
+        actions.push({ type: CAP + 'range', state: { instance: 'brightness', value: pct } });
+      }
       return { id, actions };
     });
     return this.call('/v1.0/devices/actions', { devices }).then(r => {

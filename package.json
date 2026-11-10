@@ -1,6 +1,6 @@
 {
   "name": "questsound-light",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Bridge between QuestSound (questsound.ru) and your smart lights: Home Assistant, Yeelight, Yandex, MQTT, WLED, webhooks",
   "type": "module",
   "license": "MIT",
