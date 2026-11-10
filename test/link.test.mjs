@@ -55,3 +55,13 @@ test('codes and keys look right', () => {
   assert.match(newKey(), /^[a-f0-9]{32}$/);
   assert.match(newCode(), /^[A-HJ-NP-Z2-9]{6}$/);
 });
+test('a replaced bridge comes back later instead of quitting', { skip, timeout: 15000 }, async t => {
+  const S = await startQS(); t.after(() => S.stop());
+  const key = newKey(); let replaced = 0;
+  const a = connect({ server: S.url, key, onCmd() { }, onReplaced: () => { replaced++; }, replacedRetryMs: 300 }); t.after(() => a.close());
+  await until(() => a.online);
+  const b = connect({ server: S.url, key, onCmd() { } }); t.after(() => b.close());
+  await until(() => replaced === 1);
+  b.close();
+  await until(() => a.online, 5000);
+});

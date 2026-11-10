@@ -35,7 +35,16 @@ export default {
       actions.push({ type: CAP + 'range', state: { instance: 'brightness', value: Math.max(1, Math.round(t.bri * 100)) } });
       return { id, actions };
     });
-    return this.call('/v1.0/devices/actions', { devices });
+    return this.call('/v1.0/devices/actions', { devices }).then(r => {
+      // the call answers 200 even when a lamp failed: the result of each action says so
+      const perId = {};
+      for (const d of r?.devices || []) for (const c of d.capabilities || []) {
+        const res = c.state?.action_result;
+        if (res?.status === 'ERROR') perId[d.id] = res.error_code || 'ERROR';
+      }
+      if (Object.keys(perId).length) throw Object.assign(new Error('Яндекс: ' + Object.values(perId).join(', ')), { perId });
+      return r;
+    });
   },
   set(id, t) { return this.setMany({ [id]: t }); },
   async stop() { },

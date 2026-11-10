@@ -83,8 +83,8 @@ test('config saves, restarts, and never shows the token', async () => {
   assert.equal(s.modules[0].configured, true);
   assert.ok(!JSON.stringify(states).includes('TOPSECRET'));
   assert.deepEqual(s.modules[0].values, { url: 'http://ha', token: true }); // a saved secret shows only that it is there
-  // an empty secret field keeps the saved one
-  await hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'http://ha2', token: '' } });
+  // an empty secret field keeps the saved one while the address stays the same
+  await hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'http://ha', token: '' } });
   assert.equal(saved.at(-1).modules.fake.token, 'TOPSECRET');
 });
 test('a module that fails to start shows its error and others go on', async () => {
@@ -110,4 +110,25 @@ test('fx without a module fx: generic steps, then back to the last value', async
   await sleep(600);
   assert.deepEqual(mod.calls[0], ['set', 'l1', { color: '#ffffff', bri: 1, fade: 0 }]);
   assert.deepEqual(mod.calls.at(-1), ['set', 'l1', { color: '#203040', bri: 0.5, fade: 0.3 }]);
+});
+test('changing the address drops saved secrets (no token sent to a new host)', async () => {
+  const { hub, saved, mod } = setup();
+  await hub.start();
+  await hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'https://evil.example', token: '' } });
+  assert.equal(saved.at(-1).modules.fake.token, '');
+  assert.notEqual(mod.started.token, 'SECRET123');
+  await hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'https://evil.example', token: 'NEW' } });
+  await hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'https://evil.example', token: '' } }); // same address: kept
+  assert.equal(saved.at(-1).modules.fake.token, 'NEW');
+});
+test('a shared module can fail some lamps only', async () => {
+  const mod = fakeModule({ setMany: async b => { const e = new Error('device unreachable'); e.perId = { l2: 'DEVICE_UNREACHABLE' }; throw e; } });
+  delete mod.set; const states = [];
+  const hub = makeHub({ modules: [mod], config: { modules: { fake: {} } }, save() { }, publish: s => states.push(s) });
+  await hub.start();
+  await hub.handle({ cmd: 'set', lamps: { 'fake:l1': 'off', 'fake:l2': 'off' } });
+  await sleep(150);
+  const lamps = hub.state().lamps;
+  assert.equal(lamps.find(l => l.id === 'fake:l1').ok, true);
+  assert.equal(lamps.find(l => l.id === 'fake:l2').error, 'DEVICE_UNREACHABLE');
 });

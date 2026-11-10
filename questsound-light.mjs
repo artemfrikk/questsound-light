@@ -46,7 +46,7 @@ async function showCode() {
 const link = connect({
   server: cfg.server, key: cfg.key,
   onOnline: on => { log(on ? 'на связи с сервером / connected' : 'нет связи, повторяю… / reconnecting…'); if (on) hub.handle({ cmd: 'hello' }); },
-  onReplaced: () => { log('мост запущен на другом компьютере, этот останавливается / bridge started elsewhere, stopping'); quit(1); },
+  onReplaced: () => log('!!! ключ моста занят другой копией (другой компьютер или кто-то с вашим ключом). Повторю через минуту. Если это не вы, запустите мост с --pair / another copy took this bridge key; retrying in a minute. If that was not you, re-pair with --pair'),
   onCmd: c => {
     if (!cfg.paired) { cfg.paired = true; save(); clearTimeout(codeTimer); log('сайт подключён / site linked'); }
     if (c.cmd === 'unpair') { cfg.key = null; cfg.paired = false; save(); log('привязка удалена / unlinked'); return quit(0); }

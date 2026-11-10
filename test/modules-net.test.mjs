@@ -37,7 +37,7 @@ test('Yeelight: one smooth command per change, off, fx', async t => {
   assert.deepEqual(B.got.map(x => [x.method, x.params]), [
     ['set_scene', ['cf', 1, 1, '1500,1,16711680,50']],
     ['set_power', ['off', 'smooth', 500]],
-    ['start_cf', [1, 0, '100,1,16777215,100,150,7,0,0,100,1,16777215,100']],
+    ['start_cf', [3, 0, '100,1,16777215,100,150,7,0,0,100,1,16777215,100']],
   ]);
 });
 test('Yeelight: an error answer becomes an error', async t => {
@@ -134,4 +134,30 @@ test('MQTT: refused login is an error', async t => {
   const B = await fakeBroker(); t.after(B.close);
   const m = await fresh('mqtt'); t.after(() => m.stop());
   await assert.rejects(m.start({ host: '127.0.0.1', port: String(B.port), user: 'bad', pass: 'x', lamps: 'a=b' }), /5/);
+});
+test('Yeelight: lightning runs all 3 flashes and fx lasts its time', async t => {
+  process.env.QSL_NO_SSDP = '1';
+  const B = await fakeBulb(); t.after(B.close);
+  const m = await fresh('yeelight'); t.after(() => m.stop());
+  await m.start({ hosts: B.host }); await m.discover();
+  const t0 = Date.now(); await m.fx(B.host, 'lightning', 400);
+  assert.ok(Date.now() - t0 >= 380, 'fx resolved too early');
+  assert.equal(B.got[0].params[0], 3);
+});
+test('Yeelight: a broken SSDP name does not throw', async () => {
+  const { parseSsdp } = await import('../modules/yeelight.mjs');
+  const l = parseSsdp('HTTP/1.1 200 OK\r\nLocation: yeelight://10.0.0.5:55443\r\nid: 0x1\r\nname: %\r\nsupport: get_prop set_rgb\r\n');
+  assert.equal(l.name, '%'); assert.equal(l.color, true);
+});
+test('Yandex: per-device ERROR results become per-lamp errors', async t => {
+  const S = await stub({
+    'GET /v1.0/user/info': [200, { devices: [{ id: 'd1', name: 'A', type: 'devices.types.light', capabilities: [] }, { id: 'd2', name: 'B', type: 'devices.types.light', capabilities: [] }] }],
+    'POST /v1.0/devices/actions': [200, { status: 'ok', devices: [
+      { id: 'd1', capabilities: [{ type: 'devices.capabilities.on_off', state: { instance: 'on', action_result: { status: 'DONE' } } }] },
+      { id: 'd2', capabilities: [{ type: 'devices.capabilities.on_off', state: { instance: 'on', action_result: { status: 'ERROR', error_code: 'DEVICE_UNREACHABLE' } } }] }] }],
+  }); t.after(S.close);
+  process.env.QSL_YANDEX_URL = S.url;
+  const m = await fresh('yandex'); await m.start({ token: 'x' }); await m.discover();
+  const e = await m.setMany({ d1: 'off', d2: 'off' }).then(() => null, e => e);
+  assert.ok(e); assert.deepEqual(e.perId, { d2: 'DEVICE_UNREACHABLE' });
 });

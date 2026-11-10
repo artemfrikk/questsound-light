@@ -53,27 +53,33 @@ export default {
     const [r, g, b] = hexToRgb(t.color), step = this.lamps.get(id)?.color === false ? `${dur},2,2700,${bri}` : `${dur},1,${(r << 16) + (g << 8) + b},${bri}`;
     return this.send(id, 'set_scene', ['cf', 1, 1, step]); // turns on and fades in one command
   },
-  fx(id, kind, ms, last) {
-    if (kind === 'lightning') return this.send(id, 'start_cf', [1, 0, '100,1,16777215,100,150,7,0,0,100,1,16777215,100']);
+  // the bulb answers as soon as the flow starts: wait until it has played before the hub sets the lamp back
+  async fx(id, kind, ms, last) {
+    const wait = t => new Promise(r => setTimeout(r, t));
+    if (kind === 'lightning') { await this.send(id, 'start_cf', [3, 0, '100,1,16777215,100,150,7,0,0,100,1,16777215,100']); return wait(Math.max(ms, 350)); }
     const base = last && last !== 'off' ? last : { color: '#ffb25a', bri: 0.6 }, [r, g, b] = hexToRgb(base.color), rgb = (r << 16) + (g << 8) + b;
     const n = Math.max(3, Math.min(10, Math.round(ms / 150))), steps = [];
     for (let i = 0; i < n; i++) steps.push(`${Math.round(ms / n)},1,${rgb},${Math.max(1, Math.round(base.bri * 100 * (0.45 + Math.random() * 0.55)))}`);
-    return this.send(id, 'start_cf', [n, 0, steps.join(',')]);
+    await this.send(id, 'start_cf', [n, 0, steps.join(',')]);
+    return wait(ms);
   },
   async stop() { for (const c of this.conns?.values() || []) c.sock.destroy(); this.conns?.clear(); },
 };
 
+// One SSDP answer → a lamp, or null. Any device on the network may answer, so nothing here may throw.
+export function parseSsdp(text) {
+  const h = Object.fromEntries(text.split('\r\n').map(l => { const i = l.indexOf(':'); return [l.slice(0, i).trim().toLowerCase(), l.slice(i + 1).trim()]; }));
+  const addr = h.location?.replace('yeelight://', ''); if (!addr || !h.id) return null;
+  let name = h.name || ''; try { name = decodeURIComponent(name); } catch { }
+  return { id: h.id, name: name || `Yeelight ${h.model || ''} ${addr.split(':')[0]}`.replace(/\s+/g, ' '), color: /set_rgb/.test(h.support || ''), addr };
+}
 // Ask the network for Yeelight lamps; they answer within a second or two.
 function ssdp(ms = 2000) {
   return new Promise(resolve => {
     const found = new Map(), sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     const done = () => { try { sock.close(); } catch { } resolve([...found.values()]); };
     sock.on('error', done);
-    sock.on('message', buf => {
-      const h = Object.fromEntries(String(buf).split('\r\n').map(l => { const i = l.indexOf(':'); return [l.slice(0, i).trim().toLowerCase(), l.slice(i + 1).trim()]; }));
-      const addr = h.location?.replace('yeelight://', ''); if (!addr || !h.id) return;
-      found.set(h.id, { id: h.id, name: h.name ? decodeURIComponent(h.name) : `Yeelight ${h.model || ''} ${addr.split(':')[0]}`.replace(/\s+/g, ' '), color: /set_rgb/.test(h.support || ''), addr });
-    });
+    sock.on('message', buf => { const l = parseSsdp(String(buf)); if (l) found.set(l.id, l); });
     sock.bind(() => {
       const msg = Buffer.from(`M-SEARCH * HTTP/1.1\r\nHOST: ${MCAST}:${PORT}\r\nMAN: "ssdp:discover"\r\nST: wifi_bulb\r\n`);
       sock.send(msg, PORT, MCAST); setTimeout(() => sock.send(msg, PORT, MCAST), 300);
