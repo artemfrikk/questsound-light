@@ -100,3 +100,14 @@ test('removing a module stops it', async () => {
   assert.equal(saved.at(-1).modules.fake, undefined);
   assert.deepEqual(mod.calls.at(-1), ['stop']);
 });
+test('fx without a module fx: generic steps, then back to the last value', async () => {
+  const mod = fakeModule({ fx: undefined }), states = [];
+  const hub = makeHub({ modules: [mod], config: { modules: { fake: {} } }, save() { }, publish: s => states.push(s) });
+  await hub.start();
+  await hub.handle({ cmd: 'set', lamps: { 'fake:l1': { color: '#203040', bri: 0.5, fade: 1 } } });
+  await sleep(30); mod.calls.length = 0;
+  await hub.handle({ cmd: 'fx', lamps: ['fake:l1'], kind: 'lightning', ms: 300 });
+  await sleep(600);
+  assert.deepEqual(mod.calls[0], ['set', 'l1', { color: '#ffffff', bri: 1, fade: 0 }]);
+  assert.deepEqual(mod.calls.at(-1), ['set', 'l1', { color: '#203040', bri: 0.5, fade: 0.3 }]);
+});
