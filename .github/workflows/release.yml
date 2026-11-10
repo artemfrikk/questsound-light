@@ -1,0 +1,45 @@
+# On a tag v*: test, then build the Windows and Raspberry Pi archives with Node.js inside and publish a release.
+# Node is downloaded from nodejs.org and checked against its official SHA256SUMS before it is packed.
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NODE_LINE: latest-v22.x
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm test
+      - name: Fetch Node.js
+        run: |
+          set -e
+          base=https://nodejs.org/dist/$NODE_LINE
+          curl -fsSL $base/SHASUMS256.txt -o SHASUMS256.txt
+          win=$(grep -o 'node-v[0-9.]*-win-x64.zip' SHASUMS256.txt | head -1)
+          arm=$(grep -o 'node-v[0-9.]*-linux-arm64.tar.gz' SHASUMS256.txt | head -1)
+          curl -fsSLO $base/$win; curl -fsSLO $base/$arm
+          grep -E " ($win|$arm)$" SHASUMS256.txt | sha256sum -c -
+          echo "WIN=$win" >> $GITHUB_ENV; echo "ARM=$arm" >> $GITHUB_ENV
+      - name: Pack
+        run: |
+          set -e
+          src="questsound-light.mjs package.json lib modules README.md README.ru.md SECURITY.md LICENSE"
+          mkdir -p dist w/questsound-light a/questsound-light
+          cp -r $src w/questsound-light/; cp -r $src questsound-light.service a/questsound-light/
+          unzip -q $WIN -d w; mv w/${WIN%.zip} w/questsound-light/node
+          printf '@echo off\r\ncd /d "%%~dp0"\r\nnode\\node.exe questsound-light.mjs %%*\r\npause\r\n' > w/questsound-light/start.cmd
+          (cd w && zip -qr ../dist/questsound-light-win-x64.zip questsound-light)
+          tar xzf $ARM -C a; mv a/${ARM%.tar.gz} a/questsound-light/node
+          tar czf dist/questsound-light-linux-arm64.tar.gz -C a questsound-light
+          (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
