@@ -27,9 +27,9 @@ You need a computer or a Raspberry Pi on the same network as the lamps, switched
 
 ## Pairing
 
-1. On first start the bridge prints a 6-character code.
+1. On every start the bridge prints a 6-character code.
 2. On questsound.ru open the **Lighting** tab and enter the code.
-3. Done: the bridge connects by itself on every start. To pair again: `node questsound-light.mjs --pair`.
+3. Done: the bridge connects by itself. After “Unlink” on the site it shows a new code right away. To pair again: `node questsound-light.mjs --pair`.
 
 ## Connections
 
