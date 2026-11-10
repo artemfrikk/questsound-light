@@ -40,7 +40,7 @@ cd questsound-light
 ### Если Node.js 18+ уже установлен
 
 ```bash
-git clone https://github.com/questsound/questsound-light
+git clone https://github.com/artemfrikk/questsound-light
 cd questsound-light
 node questsound-light.mjs
 ```

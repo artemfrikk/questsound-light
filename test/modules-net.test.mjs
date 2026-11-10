@@ -161,3 +161,13 @@ test('Yandex: per-device ERROR results become per-lamp errors', async t => {
   const e = await m.setMany({ d1: 'off', d2: 'off' }).then(() => null, e => e);
   assert.ok(e); assert.deepEqual(e.perId, { d2: 'DEVICE_UNREACHABLE' });
 });
+test('MQTT: a reconfigure leaves one connection', async t => {
+  const B = await fakeBroker(); t.after(B.close);
+  let conns = 0; const count = () => { conns++; };
+  const m = await fresh('mqtt'); t.after(() => m.stop());
+  const s = { host: '127.0.0.1', port: String(B.port), lamps: 'a=b' };
+  await m.start(s); await m.stop(); await m.start(s);
+  const first = m.sock;
+  await sleep(5300); // longer than the reconnect delay
+  assert.equal(m.sock, first);
+});

@@ -23,14 +23,14 @@ export default {
   ],
   async start(s) {
     if (!s.host) throw new Error('нужен адрес брокера');
-    this.s = s; this.closed = false;
+    this.s = s; this.closed = false; this.gen = (this.gen || 0) + 1; // a socket from an older start never reconnects
     this.topics = new Map(String(s.lamps || '').split(/[\n,]/).map(l => l.split('=').map(x => x.trim())).filter(([n, t]) => n && t)
       .map(([n, t]) => [n, t.endsWith('/set') ? t : t + '/set']));
     await this.connect();
   },
   connect() {
     return new Promise((ok, fail) => {
-      const { host, port, user, pass } = this.s;
+      const { host, port, user, pass } = this.s, gen = this.gen;
       const sock = net.createConnection(+port || 1883, host);
       let flags = 0x02; const parts = [str('MQTT'), Buffer.from([4])];
       if (user) flags |= 0x80; if (pass) flags |= 0x40;
@@ -45,7 +45,7 @@ export default {
         ok();
       });
       sock.on('error', e => { clearTimeout(t); fail(e); });
-      sock.on('close', () => { clearInterval(this.ping); if (this.sock === sock) this.sock = null; if (!this.closed) setTimeout(() => !this.closed && !this.sock && this.connect().catch(() => { }), 5000); });
+      sock.on('close', () => { clearInterval(this.ping); if (this.sock === sock) this.sock = null; if (!this.closed && gen === this.gen) setTimeout(() => !this.closed && gen === this.gen && !this.sock && this.connect().catch(() => { }), 5000); });
       sock.write(packet(0x10, Buffer.concat(parts)));
     });
   },

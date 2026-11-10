@@ -39,7 +39,7 @@ function fakeModule(over = {}) {
     async start(s) { m.started = s; if (s.token === 'bad') throw new Error('401 Unauthorized'); },
     async discover() { return [{ id: 'l1', name: 'Ceiling', caps: { color: true, fast: true } }, { id: 'l2', name: 'Strip', caps: { color: true } }]; },
     async set(id, t) { m.calls.push(['set', id, t]); },
-    async fx(id, kind, ms) { m.calls.push(['fx', id, kind, ms]); },
+    async fx(id, kind, ms, last) { m.calls.push(['fx', id, kind, ms, last]); },
     async stop() { m.calls.push(['stop']); },
     ...over,
   };
@@ -68,9 +68,12 @@ test('set goes to the right lamp, off too, unknown ids ignored', async () => {
 });
 test('fx only reaches fast lamps', async () => {
   const { hub, mod } = setup(); await hub.start();
+  const on = { color: '#ffffff', bri: 1, fade: 0 };
+  await hub.handle({ cmd: 'set', lamps: { 'fake:l1': on, 'fake:l2': on } }); await sleep(30); mod.calls.length = 0;
   await hub.handle({ cmd: 'fx', lamps: ['fake:l1', 'fake:l2'], kind: 'lightning', ms: 400 });
   await sleep(20);
-  assert.deepEqual(mod.calls, [['fx', 'l1', 'lightning', 400]]);
+  assert.deepEqual(mod.calls[0], ['fx', 'l1', 'lightning', 400, on]);
+  assert.ok(!mod.calls.some(c => c[0] === 'fx' && c[1] === 'l2'));
 });
 test('config saves, restarts, and never shows the token', async () => {
   const { hub, mod, states, saved } = setup({});
@@ -131,4 +134,33 @@ test('a shared module can fail some lamps only', async () => {
   const lamps = hub.state().lamps;
   assert.equal(lamps.find(l => l.id === 'fake:l1').ok, true);
   assert.equal(lamps.find(l => l.id === 'fake:l2').error, 'DEVICE_UNREACHABLE');
+});
+test('two fast saves run one after another', async () => {
+  const order = [];
+  const mod = fakeModule({ async start(s) { order.push('start ' + s.url); await sleep(30); order.push('ready ' + s.url); }, async stop() { order.push('stop'); } });
+  const hub = makeHub({ modules: [mod], config: { modules: {} }, save() { }, publish() { } });
+  await hub.start();
+  await Promise.all([hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'a' } }), hub.handle({ cmd: 'config', module: 'fake', settings: { url: 'b' } })]);
+  assert.deepEqual(order, ['start a', 'ready a', 'stop', 'start b', 'ready b']);
+});
+test('effects skip lamps that are off or never set', async () => {
+  const mod = fakeModule({ fx: undefined });
+  const hub = makeHub({ modules: [mod], config: { modules: { fake: {} } }, save() { }, publish() { } });
+  await hub.start();
+  await hub.handle({ cmd: 'set', lamps: { 'fake:l1': 'off' } }); await sleep(30); mod.calls.length = 0;
+  await hub.handle({ cmd: 'fx', lamps: ['fake:l1', 'fake:l2'], kind: 'flicker', ms: 300 }); await sleep(400);
+  assert.deepEqual(mod.calls, []);
+});
+test('credentials inside plain fields are masked in state and survive a re-save', async () => {
+  const mod = fakeModule({ settings: [{ key: 'url', label: 'URL' }] }), saved = [];
+  const config = { modules: {} };
+  const hub = makeHub({ modules: [mod], config, save: () => saved.push(JSON.parse(JSON.stringify(config))), publish() { } });
+  await hub.start();
+  const url = 'http://bob:pw1@nodered:1880/l?token=SEKRET&zone=1';
+  await hub.handle({ cmd: 'config', module: 'fake', settings: { url } });
+  const shown = hub.state().modules[0].values.url;
+  assert.ok(!shown.includes('pw1') && !shown.includes('SEKRET'), shown);
+  assert.match(shown, /zone=1/);
+  await hub.handle({ cmd: 'config', module: 'fake', settings: { url: shown } }); // the form sends back what it showed
+  assert.equal(saved.at(-1).modules.fake.url, url);
 });
