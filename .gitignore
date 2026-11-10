@@ -1,0 +1,4 @@
+node_modules/
+dist/
+*.tmp
+.questsound-light.json
