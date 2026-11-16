@@ -24,7 +24,8 @@ Smooth fades and the calm "Breath" and "Fire" effects work on every connection.
 You need a computer or a Raspberry Pi on the same network as the lamps, switched on during the game.
 
 - **Windows:** download `questsound-light-win-x64.zip` from [Releases](../../releases/latest), unzip, run `start.cmd`. Node.js is inside. Windows may warn that the program is unsigned: "More info" → "Run anyway". The source is right here; archive checksums are in `SHA256SUMS`.
-- **Raspberry Pi (64-bit) / Linux:** `tar xzf questsound-light-linux-arm64.tar.gz && cd questsound-light && ./node/bin/node questsound-light.mjs`. To start it with the Pi, see `questsound-light.service`.
+- **macOS:** download `questsound-light-macos-arm64.tar.gz` (Apple Silicon, M1–M4) or `questsound-light-macos-x64.tar.gz` (Intel), double-click it to unpack. The first time, right-click `start.command` → Open → Open (the program is unsigned); after that a double-click is enough. If macOS still refuses: System Settings → Privacy & Security → "Open Anyway".
+- **Linux / Raspberry Pi (64-bit):** `tar xzf questsound-light-linux-x64.tar.gz` (or `-linux-arm64` on a Pi) `&& cd questsound-light && ./start.sh`. To start it with the machine, see `questsound-light.service`.
 - **With Node.js 18+ installed:** `git clone https://github.com/artemfrikk/questsound-light && cd questsound-light && node questsound-light.mjs`.
 
 ## Pairing

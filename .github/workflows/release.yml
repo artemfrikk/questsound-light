@@ -1,4 +1,4 @@
-# On a tag v*: test, then build the Windows and Raspberry Pi archives with Node.js inside and publish a release.
+# On a tag v*: test, then build the Windows, macOS and Linux (x64, Raspberry Pi) archives with Node.js inside and publish a release.
 # Node is downloaded from nodejs.org and checked against its official SHA256SUMS before it is packed.
 name: release
 on:
@@ -22,22 +22,32 @@ jobs:
           set -e
           base=https://nodejs.org/dist/$NODE_LINE
           curl -fsSL $base/SHASUMS256.txt -o SHASUMS256.txt
-          win=$(grep -o 'node-v[0-9.]*-win-x64.zip' SHASUMS256.txt | head -1)
-          arm=$(grep -o 'node-v[0-9.]*-linux-arm64.tar.gz' SHASUMS256.txt | head -1)
-          curl -fsSLO $base/$win; curl -fsSLO $base/$arm
-          grep -E " ($win|$arm)$" SHASUMS256.txt | sha256sum -c -
-          echo "WIN=$win" >> $GITHUB_ENV; echo "ARM=$arm" >> $GITHUB_ENV
+          files=""
+          for p in win-x64.zip linux-x64.tar.gz linux-arm64.tar.gz darwin-arm64.tar.gz darwin-x64.tar.gz; do
+            f=$(grep -o "node-v[0-9.]*-$p" SHASUMS256.txt | head -1); curl -fsSLO $base/$f; files="$files $f"
+          done
+          for f in $files; do grep -E " $f$" SHASUMS256.txt; done | sha256sum -c -
       - name: Pack
         run: |
           set -e
           src="questsound-light.mjs package.json lib modules README.md README.ru.md SECURITY.md LICENSE"
-          mkdir -p dist w/questsound-light a/questsound-light
-          cp -r $src w/questsound-light/; cp -r $src questsound-light.service a/questsound-light/
-          unzip -q $WIN -d w; mv w/${WIN%.zip} w/questsound-light/node
-          printf '@echo off\r\ncd /d "%%~dp0"\r\nnode\\node.exe questsound-light.mjs %%*\r\npause\r\n' > w/questsound-light/start.cmd
+          mkdir -p dist
+          # Windows: double-click start.cmd
+          mkdir -p w/questsound-light; cp -r $src w/questsound-light/
+          win=$(ls node-v*-win-x64.zip); unzip -q $win -d w; mv w/${win%.zip} w/questsound-light/node
+          printf '@echo off\r\ncd /d "%%~dp0"\r\nnode\node.exe questsound-light.mjs %%*\r\npause\r\n' > w/questsound-light/start.cmd
           (cd w && zip -qr ../dist/questsound-light-win-x64.zip questsound-light)
-          tar xzf $ARM -C a; mv a/${ARM%.tar.gz} a/questsound-light/node
-          tar czf dist/questsound-light-linux-arm64.tar.gz -C a questsound-light
+          # Linux and macOS: tar.gz keeps the exec bits; start.sh (Linux) or start.command (macOS, double-click)
+          for p in linux-x64 linux-arm64 darwin-arm64 darwin-x64; do
+            d=b-$p/questsound-light; mkdir -p $d; cp -r $src $d/
+            tar xzf node-v*-$p.tar.gz -C b-$p; mv b-$p/node-v*-$p $d/node
+            case $p in
+              linux-*) cp questsound-light.service $d/; cp start.sh $d/start.sh; chmod +x $d/start.sh ;;
+              darwin-*) cp start.command $d/start.command; chmod +x $d/start.command ;;
+            esac
+            name=${p/darwin-arm64/macos-arm64}; name=${name/darwin-x64/macos-x64}
+            tar czf dist/questsound-light-$name.tar.gz -C b-$p questsound-light
+          done
           (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
       - uses: softprops/action-gh-release@v2
         with:

@@ -29,12 +29,22 @@
 2. Запустите `start.cmd`. Node.js уже внутри архива, ставить ничего не нужно.
 3. Windows может предупредить, что программа не подписана. Нажмите «Подробнее» → «Выполнить в любом случае». Исходный код открыт и лежит в этом репозитории, а контрольные суммы архивов есть в `SHA256SUMS`.
 
-### Raspberry Pi (64-битная ОС) и Linux
+### macOS
+
+1. Скачайте архив под свой Mac: `questsound-light-macos-arm64.tar.gz` для M1–M4 (Apple Silicon) или `questsound-light-macos-x64.tar.gz` для Mac на Intel. Какой у вас процессор, видно в меню  → «Об этом Mac».
+2. Дважды щёлкните архив, появится папка `questsound-light`.
+3. В первый раз щёлкните `start.command` правой кнопкой → «Открыть» → «Открыть». macOS спрашивает, потому что программа не подписана. Дальше запускайте двойным щелчком.
+
+Если macOS всё равно не даёт запустить, откройте «Системные настройки» → «Конфиденциальность и безопасность» и нажмите «Всё равно открыть» внизу страницы.
+
+### Linux и Raspberry Pi
+
+Архивы: `questsound-light-linux-x64.tar.gz` для обычного компьютера, `questsound-light-linux-arm64.tar.gz` для Raspberry Pi с 64-битной ОС.
 
 ```bash
-tar xzf questsound-light-linux-arm64.tar.gz
+tar xzf questsound-light-linux-x64.tar.gz
 cd questsound-light
-./node/bin/node questsound-light.mjs
+./start.sh
 ```
 
 Чтобы мост запускался сам вместе с Pi, используйте файл `questsound-light.service` (инструкция внутри него).
