@@ -21,12 +21,15 @@ Smooth fades and the calm "Breath" and "Fire" effects work on every connection.
 
 ## Install
 
-You need a computer or a Raspberry Pi on the same network as the lamps, switched on during the game.
+You need a computer or a Raspberry Pi on the same network as the lamps, switched on during the game. Everything is on [Releases](../../releases/latest).
 
-- **Windows:** download `questsound-light-win-x64.zip` from [Releases](../../releases/latest), unzip, run `start.cmd`. Node.js is inside. Windows may warn that the program is unsigned: "More info" → "Run anyway". The source is right here; archive checksums are in `SHA256SUMS`.
-- **macOS:** download `questsound-light-macos-arm64.tar.gz` (Apple Silicon, M1–M4) or `questsound-light-macos-x64.tar.gz` (Intel), double-click it to unpack. The first time, right-click `start.command` → Open → Open (the program is unsigned); after that a double-click is enough. If macOS still refuses: System Settings → Privacy & Security → "Open Anyway".
-- **Linux / Raspberry Pi (64-bit):** `tar xzf questsound-light-linux-x64.tar.gz` (or `-linux-arm64` on a Pi) `&& cd questsound-light && ./start.sh`. To start it with the machine, see `questsound-light.service`.
+- **Windows:** download `QuestSound-Light.exe` and open it, nothing to install. The first start takes a few seconds (it prepares itself once), later ones are instant. Windows may warn that the program is unsigned: "More info" → "Run anyway".
+- **macOS:** `QuestSound-Light-mac-arm64.zip` (Apple Silicon, M1–M4) or `QuestSound-Light-mac-x64.zip` (Intel). Open the zip; the first time, right-click the app → Open → Open (it is unsigned). If there is no Open button: System Settings → Privacy & Security → "Open Anyway".
+- **Linux:** `QuestSound-Light.AppImage`: allow executing in the file's properties (or `chmod +x`) and open it. Some systems need `libfuse2`.
+- **Raspberry Pi / servers (console):** `questsound-light-console-linux-arm64.tar.gz` (also `-linux-x64`, `-macos-*`, `-win-x64`), Node.js inside: unpack and run `./start.sh`. To start it with the Pi, see `questsound-light.service`.
 - **With Node.js 18+ installed:** `git clone https://github.com/artemfrikk/questsound-light && cd questsound-light && node questsound-light.mjs`.
+
+The window shows the server link, the code for the site with a Copy button, your connections and a log. Closing it keeps the bridge running in the tray; it can also start with the computer.
 
 ## Pairing
 

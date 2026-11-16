@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <!-- the window shows only its own files: no scripts, styles, fonts or images from anywhere else -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuestSound Light</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <header class="top">
+    <img class="logo" src="icon.png" alt="">
+    <div class="brand"><b>QuestSound Light</b><span class="sub">свет для вашей игры</span></div>
+    <span class="beta">Бета</span>
+  </header>
+
+  <section class="card status" id="status">
+    <span class="dot"></span>
+    <div><b id="st-title">Запуск…</b><div class="muted small" id="st-sub"></div></div>
+  </section>
+
+  <section class="card" id="link"></section>
+
+  <section class="card">
+    <h2><span class="ic" data-ic="bulb"></span>Подключения</h2>
+    <div id="mods"></div>
+  </section>
+
+  <section class="card">
+    <label class="switch-row">
+      <span><b>Запускать вместе с компьютером</b><span class="muted small" id="auto-note">Мост стартует свёрнутым в значок рядом с часами</span></span>
+      <input type="checkbox" id="auto" role="switch"><span class="switch" aria-hidden="true"></span>
+    </label>
+  </section>
+
+  <details class="card journal">
+    <summary><span class="ic" data-ic="list"></span>Журнал</summary>
+    <pre id="log"></pre>
+  </details>
+
+  <footer>
+    <span class="muted small" id="ver"></span>
+    <span class="spacer"></span>
+    <a href="https://github.com/artemfrikk/questsound-light" target="_blank" class="small">Исходный код</a>
+    <button class="btn ghost sm" id="quit"><span class="ic" data-ic="power"></span>Выйти</button>
+  </footer>
+  <script src="ui.js"></script>
+</body>
+</html>

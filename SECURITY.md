@@ -13,7 +13,9 @@
 
 **Storage.** Settings and tokens are kept in `~/.questsound-light.json` on your computer, readable by your user only (mode 600 on Linux/macOS). Delete the file to forget everything.
 
-**No extras.** No npm dependencies (only Node.js built-ins), no telemetry, no analytics, no auto-update, no code downloaded at run time. Everything the bridge runs is in this repository.
+**No extras.** The bridge itself (`lib/`, `modules/`, the console version) has no npm dependencies, only Node.js built-ins. The desktop program wraps it in Electron, its only dependency; its window loads nothing from the internet (a strict Content-Security-Policy, no Node access in the page). No telemetry, no analytics, no auto-update, no code downloaded at run time.
+
+**Windows one-file program.** `QuestSound-Light.exe` is a small launcher ([build/launcher/Launcher.cs](build/launcher/Launcher.cs)) with the Electron program packed inside. On the first start of a version it unpacks it to `%LOCALAPPDATA%\QuestSound Light\app-<version>` and removes older versions; later starts run it from there.
 
 **Who can control your lamps:** whoever holds the bridge key, which is stored in your browser after pairing. The key is 128 random bits; the pairing code works once and expires after 10 minutes. To revoke: Lighting → Unlink on the site, or start the bridge with `--pair`.
 
@@ -28,7 +30,7 @@
 
 **Хранение:** `~/.questsound-light.json` на вашем компьютере, доступен только вашему пользователю.
 
-**Ничего лишнего:** нет зависимостей npm, телеметрии, аналитики, автообновления и загрузки кода во время работы.
+**Ничего лишнего:** у самого моста нет зависимостей npm. Программа с окном — это мост внутри Electron, единственной зависимости; окно ничего не грузит из интернета. Нет телеметрии, аналитики, автообновления и загрузки кода во время работы. На Windows файл `QuestSound-Light.exe` при первом запуске версии распаковывает программу в `%LOCALAPPDATA%\QuestSound Light`.
 
 ## Verifying a release / Проверка выпуска
 
@@ -36,7 +38,7 @@ Release archives are built by GitHub Actions ([release.yml](.github/workflows/re
 
 ```bash
 sha256sum -c SHA256SUMS          # Linux / macOS
-certutil -hashfile questsound-light-win-x64.zip SHA256   # Windows
+certutil -hashfile QuestSound-Light.exe SHA256   # Windows
 ```
 
 ## Reporting a vulnerability / Сообщить об уязвимости

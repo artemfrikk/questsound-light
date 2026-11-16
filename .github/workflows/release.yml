@@ -1,5 +1,6 @@
-# On a tag v*: test, then build the Windows, macOS and Linux (x64, Raspberry Pi) archives with Node.js inside and publish a release.
-# Node is downloaded from nodejs.org and checked against its official SHA256SUMS before it is packed.
+# On a tag v*: test, then build every download and publish one release.
+#   Desktop program (window + tray): Windows one-file .exe, macOS .app (Apple Silicon and Intel), Linux AppImage.
+#   Console version (Raspberry Pi, servers): archives with Node.js inside, checked against nodejs.org's SHA256SUMS.
 name: release
 on:
   push:
@@ -8,15 +9,59 @@ on:
 permissions:
   contents: write
 jobs:
-  build:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --test "test/*.test.mjs"
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: dist/QuestSound-Light.exe }
+
+  macos:
+    needs: test
+    runs-on: macos-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npx electron-builder --mac --arm64 --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: dist/QuestSound-Light-mac-*.zip }
+
+  linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npx electron-builder --linux --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: linux, path: dist/QuestSound-Light.AppImage }
+
+  console:
+    needs: test
     runs-on: ubuntu-latest
     env:
       NODE_LINE: latest-v22.x
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm test
       - name: Fetch Node.js
         run: |
           set -e
@@ -31,13 +76,11 @@ jobs:
         run: |
           set -e
           src="questsound-light.mjs package.json lib modules README.md README.ru.md SECURITY.md LICENSE"
-          mkdir -p dist
-          # Windows: double-click start.cmd
+          mkdir -p out
           mkdir -p w/questsound-light; cp -r $src w/questsound-light/
           win=$(ls node-v*-win-x64.zip); unzip -q $win -d w; mv w/${win%.zip} w/questsound-light/node
           printf '@echo off\r\ncd /d "%%~dp0"\r\nnode\node.exe questsound-light.mjs %%*\r\npause\r\n' > w/questsound-light/start.cmd
-          (cd w && zip -qr ../dist/questsound-light-win-x64.zip questsound-light)
-          # Linux and macOS: tar.gz keeps the exec bits; start.sh (Linux) or start.command (macOS, double-click)
+          (cd w && zip -qr ../out/questsound-light-console-win-x64.zip questsound-light)
           for p in linux-x64 linux-arm64 darwin-arm64 darwin-x64; do
             d=b-$p/questsound-light; mkdir -p $d; cp -r $src $d/
             tar xzf node-v*-$p.tar.gz -C b-$p; mv b-$p/node-v*-$p $d/node
@@ -46,10 +89,20 @@ jobs:
               darwin-*) cp start.command $d/start.command; chmod +x $d/start.command ;;
             esac
             name=${p/darwin-arm64/macos-arm64}; name=${name/darwin-x64/macos-x64}
-            tar czf dist/questsound-light-$name.tar.gz -C b-$p questsound-light
+            tar czf out/questsound-light-console-$name.tar.gz -C b-$p questsound-light
           done
-          (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with: { name: console, path: out/* }
+
+  release:
+    needs: [windows, macos, linux, console]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
       - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: dist/*
           generate_release_notes: true
